@@ -241,7 +241,7 @@ pub fn core_main() -> Option<Vec<String>> {
                     },
                 };
                 Toast::new(Toast::POWERSHELL_APP_ID)
-                    .title(&config::APP_NAME.read().unwrap())
+                    .title(&crate::get_display_name())
                     .text1(&translate(text))
                     .sound(Some(Sound::Default))
                     .duration(Duration::Short)
@@ -273,7 +273,7 @@ pub fn core_main() -> Option<Vec<String>> {
                     }
                 };
                 Toast::new(Toast::POWERSHELL_APP_ID)
-                    .title(&config::APP_NAME.read().unwrap())
+                    .title(&crate::get_display_name())
                     .text1(&text)
                     .sound(Some(Sound::Default))
                     .duration(Duration::Short)
@@ -308,7 +308,7 @@ pub fn core_main() -> Option<Vec<String>> {
             } else if args[0] == "--install-remote-printer" {
                 #[cfg(windows)]
                 if crate::platform::is_win_10_or_greater() {
-                    match remote_printer::install_update_printer(&crate::get_app_name()) {
+                    match remote_printer::install_update_printer(&crate::get_display_name()) {
                         Ok(_) => {
                             log::info!("Remote printer installed/updated successfully");
                         }
@@ -323,7 +323,7 @@ pub fn core_main() -> Option<Vec<String>> {
             } else if args[0] == "--uninstall-remote-printer" {
                 #[cfg(windows)]
                 if crate::platform::is_win_10_or_greater() {
-                    remote_printer::uninstall_printer(&crate::get_app_name());
+                    remote_printer::uninstall_printer(&crate::get_display_name());
                     log::info!("Remote printer uninstalled");
                 }
                 return None;
