@@ -110,6 +110,11 @@ class DesktopSettingPage extends StatefulWidget {
       debugPrintStack(label: '$e');
     }
   }
+
+  static void initialNetworkConfigSubmit() {
+    applyPredefinedServerConfigOnLaunch(showFeedback: true);
+  }
+
 }
 
 class _DesktopSettingPageState extends State<DesktopSettingPage>
@@ -201,8 +206,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
               tab, 'Plugin', Icons.extension_outlined, Icons.extension));
           break;
         case SettingsTabKey.account:
-          settingTabs.add(
-              _TabInfo(tab, 'Account', Icons.person_outline, Icons.person));
+        //   settingTabs.add(_TabInfo(tab, 'Account', Icons.person_outline, Icons.person));
           break;
         case SettingsTabKey.printer:
           settingTabs
@@ -1037,7 +1041,7 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
     bool enabled = !locked;
     // Simple temp wrapper for PR check
     tmpWrapper() {
-      String accessMode = bind.mainGetOptionSync(key: kOptionAccessMode);
+      String accessMode = 'full';//bind.mainGetOptionSync(key: 'access-mode');
       _AccessMode mode;
       if (accessMode == 'full') {
         mode = _AccessMode.full;
@@ -2426,7 +2430,7 @@ class _AboutState extends State<_About> {
       final scrollController = ScrollController();
       return SingleChildScrollView(
         controller: scrollController,
-        child: _Card(title: translate('About RustDesk'), children: [
+        child: _Card(title: translate('About ITB-Fernwartung'), children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2445,7 +2449,7 @@ class _AboutState extends State<_About> {
                         .marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com/privacy.html');
+                    launchUrlString('https://breitenstein.it/privacy-policy/');
                   },
                   child: Text(
                     translate('Privacy Statement'),
@@ -2453,14 +2457,14 @@ class _AboutState extends State<_About> {
                   ).marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com');
+                    launchUrlString('https://breitenstein.it');
                   },
                   child: Text(
                     translate('Website'),
                     style: linkStyle,
                   ).marginSymmetric(vertical: 4.0)),
               Container(
-                decoration: const BoxDecoration(color: Color(0xFF2c8cff)),
+                decoration: const BoxDecoration(color: Color(0xFFffe04f)),
                 padding:
                     const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
                 child: SelectionArea(
@@ -2471,14 +2475,14 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Ltd.\n$license',
-                            style: const TextStyle(color: Colors.white),
+                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Breitenstein IT.\n$license',
+                            style: const TextStyle(color: Colors.black),
                           ),
                           Text(
                             translate('Slogan_tip'),
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
-                                color: Colors.white),
+                                color: Colors.black),
                           )
                         ],
                       ),

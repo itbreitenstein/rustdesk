@@ -22,6 +22,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:window_size/window_size.dart';
 
 import 'common.dart';
 import 'consts.dart';
@@ -49,8 +50,13 @@ Future<void> main(List<String> args) async {
     runMobileApp();
     return;
   }
+
+  
   // main window
   if (args.isNotEmpty && args.first == 'multi_window') {
+
+    
+
     kWindowId = int.parse(args[1]);
     stateGlobal.setWindowId(kWindowId!);
     if (!isMacOS) {
@@ -103,6 +109,10 @@ Future<void> main(List<String> args) async {
         break;
     }
   } else if (args.isNotEmpty && args.first == '--cm') {
+
+    // setWindowMaxSize(const Size(605, 475));
+    // setWindowMinSize(const Size(605, 475));
+
     debugPrint("--cm started");
     desktopType = DesktopType.cm;
     await windowManager.ensureInitialized();
@@ -110,6 +120,8 @@ Future<void> main(List<String> args) async {
   } else if (args.contains('--install')) {
     runInstallPage();
   } else {
+    // setWindowMaxSize(const Size(605, 475));
+    // setWindowMinSize(const Size(605, 475));
     desktopType = DesktopType.main;
     await windowManager.ensureInitialized();
     windowManager.setPreventClose(true);
@@ -146,6 +158,7 @@ void runMainApp(bool startService) async {
   }
   await Future.wait([gFFI.abModel.loadCache(), gFFI.groupModel.loadCache()]);
   gFFI.userModel.refreshCurrentUser();
+  await applyPredefinedServerConfigOnLaunch();
   runApp(App());
 
   bool? alwaysOnTop;
@@ -173,8 +186,7 @@ void runMainApp(bool startService) async {
     }
     windowManager.setOpacity(1);
     windowManager.setTitle(getWindowName());
-    // Do not use `windowManager.setResizable()` here.
-    setResizable(!bind.isIncomingOnly());
+    windowManager.setResizable(!bind.isIncomingOnly());
   });
 }
 
@@ -186,6 +198,7 @@ void runMobileApp() async {
   draggablePositions.load();
   await Future.wait([gFFI.abModel.loadCache(), gFFI.groupModel.loadCache()]);
   gFFI.userModel.refreshCurrentUser();
+  await applyPredefinedServerConfigOnLaunch();
   runApp(App());
   await initUniLinks();
 }

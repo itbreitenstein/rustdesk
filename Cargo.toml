@@ -1,10 +1,10 @@
 [package]
 name = "rustdesk"
 version = "1.4.8"
-authors = ["rustdesk <info@rustdesk.com>"]
+authors = ["IT-Breitenstein <info@breitenstein.it>"]
 edition = "2021"
 build= "build.rs"
-description = "RustDesk Remote Desktop"
+description = "IT-Breitenstein-Fernwartung"
 default-run = "rustdesk"
 rust-version = "1.75"
 
@@ -213,9 +213,9 @@ exclude = ["vdi/host", "examples/custom_plugin"]
 libxdo-sys = { path = "libs/libxdo-sys-stub" }
 
 [package.metadata.winres]
-LegalCopyright = "Copyright © 2025 Purslane Ltd. All rights reserved."
+LegalCopyright = "Copyright © 2024 IT-Breitenstein. All rights reserved."
 ProductName = "IT-Breitenstein Fernwartung"
-FileDescription = "IT-Breitenstein Fernwartung Remote Desktop"
+FileDescription = "IT-Breitenstein Fernwartung"
 OriginalFilename = "rustdesk.exe"
 
 [target.'cfg(target_os="windows")'.build-dependencies]

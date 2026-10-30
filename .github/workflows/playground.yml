@@ -92,7 +92,7 @@ jobs:
           submodules: recursive
 
       - name: Import the codesign cert
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         uses: apple-actions/import-codesign-certs@253ddeeac23f2bdad1646faac5c8c2832e800071 # v1
         with:
           p12-file-base64: ${{ secrets.MACOS_P12_BASE64 }}
@@ -100,13 +100,13 @@ jobs:
           keychain: rustdesk
 
       - name: Check sign and import sign key
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         run: |
           security default-keychain -s rustdesk.keychain
           security find-identity -v
 
       - name: Import notarize key
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         uses: timheuer/base64-to-file@adaa40c0c581f276132199d4cf60afa07ce60eac # v1.2
         with:
           # https://gregoryszorc.com/docs/apple-codesign/stable/apple_codesign_rcodesign.html#notarizing-and-stapling
@@ -115,7 +115,7 @@ jobs:
           encodedString: ${{ secrets.MACOS_NOTARIZE_JSON }}
 
       - name: Install rcodesign tool
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         shell: bash
         run: |
           pushd /tmp
@@ -198,7 +198,7 @@ jobs:
           create-dmg --icon "RustDesk.app" 200 190 --hide-extension "RustDesk.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg ./flutter/build/macos/Build/Products/Release/RustDesk.app
 
       - name: Codesign app and create signed dmg
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         env:
           # Passed via env and quoted so special characters in the secrets don't break the shell.
           MACOS_P12_PASSWORD: ${{ secrets.MACOS_P12_PASSWORD }}
@@ -217,7 +217,7 @@ jobs:
           create-dmg --icon "RustDesk.app" 200 190 --hide-extension "RustDesk.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}.dmg ./flutter/build/macos/Build/Products/Release/RustDesk.app
           codesign --force --options runtime -s "$MACOS_CODESIGN_IDENTITY" --deep --strict rustdesk-${{ env.VERSION }}.dmg -vvv
           # notarize the rustdesk-${{ env.VERSION }}.dmg
-          rcodesign notary-submit --api-key-path ${{ github.workspace }}/rustdesk.json  --staple rustdesk-${{ env.VERSION }}.dmg
+          rcodesign notary-submit --api-key-path "${{ github.workspace }}/rustdesk.json" --staple "rustdesk-${{ env.VERSION }}.dmg"
 
       - name: Rename rustdesk
         run: |

@@ -9,6 +9,8 @@ import 'package:flutter_hbb/common/widgets/connection_page_title.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
@@ -41,7 +43,7 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   double? get height => bind.isIncomingOnly() ? null : em * 3;
 
   void onUsePublicServerGuide() {
-    const url = "https://rustdesk.com/pricing";
+    const url = "https://breitenstein.it/";
     canLaunchUrlString(url).then((can) {
       if (can) {
         launchUrlString(url);
@@ -303,17 +305,23 @@ class _ConnectionPageState extends State<ConnectionPage>
 
   @override
   Widget build(BuildContext context) {
+    
     final isOutgoingOnly = bind.isOutgoingOnly();
+
     return Column(
+      
       children: [
         Expanded(
             child: Column(
           children: [
+
             Row(
               children: [
+                
                 Flexible(child: _buildRemoteIDTextField(context)),
               ],
             ).marginOnly(top: 22),
+            
             SizedBox(height: 12),
             Divider().paddingOnly(right: 12),
             Expanded(child: PeerTabPage()),
@@ -346,11 +354,44 @@ class _ConnectionPageState extends State<ConnectionPage>
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
       decoration: BoxDecoration(
           borderRadius: const BorderRadius.all(Radius.circular(13)),
-          border: Border.all(color: Theme.of(context).colorScheme.background)),
+          border: Border.all(color: Theme.of(context).colorScheme.onPrimary)),
       child: Ink(
         child: Column(
           children: [
-            getConnectionPageTitle(context, false).marginOnly(bottom: 15),
+            Row(
+                      children: [SvgPicture.asset('assets/test.svg', height: 40, width: 80, fit: BoxFit.fill,).marginOnly(right: 40)],
+            ).marginOnly(bottom: 15),
+            Row(
+              children: [
+                Expanded(
+                    child: Row(
+                  children: [
+                    // Image(image: NetworkImage('https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg'),),
+                    AutoSizeText(
+                      translate('Control Remote Desktop'),
+                      maxLines: 1,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.merge(TextStyle(height: 1)),
+                    ).marginOnly(right: 4),
+                    Tooltip(
+                      waitDuration: Duration(milliseconds: 0),
+                      message: translate("id_input_tip"),
+                      child: Icon(
+                        Icons.help_outline_outlined,
+                        size: 16,
+                        color: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.color
+                            ?.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                )),
+              ],
+            ).marginOnly(bottom: 15),
             Row(
               children: [
                 Expanded(

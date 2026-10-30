@@ -45,6 +45,7 @@ env:
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836" # 2025.01.13, got "/opt/artifacts/vcpkg/vcpkg: No such file or directory" with latest version
   VERSION: "1.4.8"
+  ARTIFACT_PREFIX: "ITB-Fernwartung"
   NDK_VERSION: "r28c"
   #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
@@ -689,8 +690,20 @@ jobs:
         with:
           submodules: recursive
 
+      # Signing/notarization steps run only when MACOS_P12_BASE64 is a non-empty
+      # repository secret (Settings → Secrets and variables → Actions → Secrets).
+      - name: Check macOS signing secrets
+        run: |
+          if [ -n "${MACOS_P12_BASE64}" ]; then
+            echo "macOS signing: enabled (MACOS_P12_BASE64 length ${#MACOS_P12_BASE64})"
+          else
+            echo "::warning::macOS signing/notarization will be SKIPPED — MACOS_P12_BASE64 secret is empty or missing."
+            echo "Add repository secrets: MACOS_P12_BASE64, MACOS_P12_PASSWORD, MACOS_CODESIGN_IDENTITY, MACOS_NOTARIZE_JSON"
+            echo "UPLOAD_ARTIFACT=${UPLOAD_ARTIFACT}"
+          fi
+
       - name: Import the codesign cert
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         uses: apple-actions/import-codesign-certs@253ddeeac23f2bdad1646faac5c8c2832e800071 # v1
         with:
           p12-file-base64: ${{ secrets.MACOS_P12_BASE64 }}
@@ -698,13 +711,13 @@ jobs:
           keychain: rustdesk
 
       - name: Check sign and import sign key
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         run: |
           security default-keychain -s rustdesk.keychain
           security find-identity -v
 
       - name: Import notarize key
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         uses: timheuer/base64-to-file@adaa40c0c581f276132199d4cf60afa07ce60eac # v1.2
         with:
           # https://gregoryszorc.com/docs/apple-codesign/stable/apple_codesign_rcodesign.html#notarizing-and-stapling
@@ -713,7 +726,7 @@ jobs:
           encodedString: ${{ secrets.MACOS_NOTARIZE_JSON }}
 
       - name: Install rcodesign tool
-        if: env.MACOS_P12_BASE64 != null
+        if: env.MACOS_P12_BASE64 != ''
         shell: bash
         run: |
           pushd /tmp
@@ -838,7 +851,7 @@ jobs:
           path: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg # can not upload the directory directly or tar.gz, which destroy the link structure, causing the codesign failed
 
       - name: Codesign app and create signed dmg
-        if: env.MACOS_P12_BASE64 != null && env.UPLOAD_ARTIFACT == 'true'
+        if: env.MACOS_P12_BASE64 != '' && env.UPLOAD_ARTIFACT == 'true'
         env:
           # Passed via env and quoted so special characters in the secrets don't break the shell.
           MACOS_P12_PASSWORD: ${{ secrets.MACOS_P12_PASSWORD }}
@@ -857,7 +870,7 @@ jobs:
           create-dmg --volname "IT-Breitenstein Fernwartung" --icon "RustDesk.app" 200 190 --hide-extension "RustDesk.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}.dmg ./flutter/build/macos/Build/Products/Release/RustDesk.app
           codesign --force --options runtime -s "$MACOS_CODESIGN_IDENTITY" --deep --strict rustdesk-${{ env.VERSION }}.dmg -vvv
           # notarize the rustdesk-${{ env.VERSION }}.dmg
-          rcodesign notary-submit --api-key-path ${{ github.workspace }}/rustdesk.json  --staple rustdesk-${{ env.VERSION }}.dmg
+          rcodesign notary-submit --api-key-path "${{ github.workspace }}/rustdesk.json" --staple "rustdesk-${{ env.VERSION }}.dmg"
 
       - name: Rename rustdesk
         if: env.UPLOAD_ARTIFACT == 'true'
@@ -1111,6 +1124,20 @@ jobs:
           name: librustdesk.so.${{ matrix.job.target }}
           path: ./target/${{ matrix.job.target }}/release/liblibrustdesk.so
 
+      - name: Generate Android icons
+        run: |
+          pip install pillow
+          python3 res/generate_android_notification_icon.py
+          cp res/icon.png flutter/assets/icon.png
+          pushd flutter
+          flutter pub get
+          dart run flutter_launcher_icons
+          popd
+          rm -f flutter/android/app/src/main/res/mipmap-*/ic_launcher_foreground.png
+          rm -f flutter/android/app/src/main/res/values/ic_launcher_background.xml
+          sed -i 's|@mipmap/ic_launcher_foreground|@drawable/ic_launcher_foreground|g' \
+            flutter/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
       - name: Build rustdesk
         shell: bash
         env:
@@ -1129,7 +1156,7 @@ jobs:
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64 --split-per-abi
-              mv build/app/outputs/flutter-apk/app-arm64-v8a-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
+              mv build/app/outputs/flutter-apk/app-arm64-v8a-${{ matrix.job.reltype }}.apk ../${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
             ;;
             armv7-linux-androideabi)
               mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
@@ -1138,7 +1165,7 @@ jobs:
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm --split-per-abi
-              mv build/app/outputs/flutter-apk/app-armeabi-v7a-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
+              mv build/app/outputs/flutter-apk/app-armeabi-v7a-${{ matrix.job.reltype }}.apk ../${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
             ;;
             x86_64-linux-android)
               mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
@@ -1147,7 +1174,7 @@ jobs:
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x64 --split-per-abi
-              mv build/app/outputs/flutter-apk/app-x86_64-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
+              mv build/app/outputs/flutter-apk/app-x86_64-${{ matrix.job.reltype }}.apk ../${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
             ;;
             i686-linux-android)
               mkdir -p ./flutter/android/app/src/main/jniLibs/x86
@@ -1156,12 +1183,12 @@ jobs:
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x86 --split-per-abi
-              mv build/app/outputs/flutter-apk/app-x86-${{ matrix.job.reltype }}.apk ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
+              mv build/app/outputs/flutter-apk/app-x86-${{ matrix.job.reltype }}.apk ../${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
             ;;
           esac
           popd
           mkdir -p signed-apk; pushd signed-apk
-          mv ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk .
+          mv ../${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk .
 
       # https://github.com/r0adkll/sign-android-release/issues/84#issuecomment-1889636075
       - name: Setup sign tool version variable
@@ -1189,7 +1216,7 @@ jobs:
         if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
+          name: ${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
           path: ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
 
       - name: Publish signed apk package
@@ -1208,7 +1235,7 @@ jobs:
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}
           files: |
-            signed-apk/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
+            signed-apk/${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
 
   build-rustdesk-android-universal:
     needs: [build-rustdesk-android]
@@ -1320,6 +1347,20 @@ jobs:
           name: librustdesk.so.i686-linux-android
           path: ./flutter/android/app/src/main/jniLibs/x86
 
+      - name: Generate Android icons
+        run: |
+          pip install pillow
+          python3 res/generate_android_notification_icon.py
+          cp res/icon.png flutter/assets/icon.png
+          pushd flutter
+          flutter pub get
+          dart run flutter_launcher_icons
+          popd
+          rm -f flutter/android/app/src/main/res/mipmap-*/ic_launcher_foreground.png
+          rm -f flutter/android/app/src/main/res/values/ic_launcher_background.xml
+          sed -i 's|@mipmap/ic_launcher_foreground|@drawable/ic_launcher_foreground|g' \
+            flutter/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
       - name: Build rustdesk
         shell: bash
         env:
@@ -1345,7 +1386,7 @@ jobs:
           flutter build apk "--${{ env.reltype }}" --target-platform android-arm64,android-arm,android-x64${{ env.x86_target }}
           popd
           mkdir -p signed-apk
-          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+          mv ./flutter/build/app/outputs/flutter-apk/app-${{ env.reltype }}.apk signed-apk/${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
       # https://github.com/r0adkll/sign-android-release/issues/84#issuecomment-1889636075
       - name: Setup sign tool version variable
@@ -1373,7 +1414,7 @@ jobs:
         if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
+          name: ${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-universal.apk
           path: ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
 
       - name: Publish signed apk package
@@ -1392,7 +1433,7 @@ jobs:
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}
           files: |
-            signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+            signed-apk/${{ env.ARTIFACT_PREFIX }}-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
   build-rustdesk-linux:
     needs: [generate-bridge]
@@ -1780,6 +1821,19 @@ jobs:
           sed -i 's/"baseline": ".*"/"baseline": "${{ env.ARMV7_VCPKG_COMMIT_ID }}"/' vcpkg.json
           echo "Modified vcpkg.json for armv7 build:"
           grep -A 2 -B 2 '"baseline"' vcpkg.json
+
+      - name: Enable armv7 emulation if the runner lacks AArch32
+        if: matrix.job.arch == 'armv7'
+        run: |
+          # Some arm64 runner hosts can't execute 32-bit ARM code, so the armv7 build
+          # container fails with "exec format error". Register qemu-arm only on those hosts.
+          if docker run --rm --platform linux/arm/v7 kingtous/rustdesk-build-env-arm:latest /bin/true; then
+            echo "Runner executes armv7 natively"
+          else
+            echo "Runner lacks AArch32 support, registering qemu-arm via binfmt_misc"
+            docker run --privileged --rm tonistiigi/binfmt --install arm
+            docker run --rm --platform linux/arm/v7 kingtous/rustdesk-build-env-arm:latest /bin/true
+          fi
 
       - name: Free Space
         run: |
